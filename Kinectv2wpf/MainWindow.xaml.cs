@@ -21,18 +21,21 @@ namespace Kinectv2wpf
     /// </summary>
     public partial class MainWindow : Window
     {
+        // Kinect SDK
         KinectSensor kinect;
 
-        ColorFrameReader colorFrameReader;
-        FrameDescription colorFrameDesc;
+        DepthFrameReader depthFrameReader;
+        FrameDescription depthFrameDesc;
 
-        ColorImageFormat colorFormat = ColorImageFormat.Bgra;
+        // 表示用
+        WriteableBitmap depthImage;
+        ushort[] depthBuffer;
+        byte[] depthBitmapBuffer;
+        Int32Rect depthRect;
+        int depthStride;
 
-        // WPF
-        WriteableBitmap colorBitmap;
-        byte[] colorBuffer;
-        int colorStride;
-        Int32Rect colorRect;
+        Point depthPoint;
+        const int R = 20;
 
         public MainWindow()
         {
@@ -51,19 +54,24 @@ namespace Kinectv2wpf
                 }
                 kinect.Open();
 
-                // カラー画像の情報を作成する(BGRAフォーマット)
-                colorFrameDesc = kinect.ColorFrameSource.CreateFrameDescription(colorFormat);
+                // 表示のためのデータを作成
+                depthFrameDesc = kinect.DepthFrameSource.FrameDescription;
 
-                // カラーリーダーを開く
-                colorFrameReader = kinect.ColorFrameSource.OpenReader();
-                colorFrameReader.FrameArrived += colorFrameReader_FrameArrived;
+                // Depthリーダーを開く
+                depthFrameReader = kinect.DepthFrameSource.OpenReader();
+                depthFrameReader.FrameArrived += depthFrameReader_FrameArrived;
 
-                // カラー用のビットマップを作成する
-                colorBitmap = new WriteableBitmap(colorFrameDesc.Width, colorFrameDesc.Height, 96, 96, PixelFormats.Bgra32, null);
-                colorStride = colorFrameDesc.Width * (int)colorFrameDesc.BytesPerPixel;
-                colorRect = new Int32Rect(0, 0, colorFrameDesc.Width, colorFrameDesc.Height);
-                colorBuffer = new byte[colorStride * colorFrameDesc.Height];
-                ImageColor.Source = colorBitmap;
+                // 表示のためにビットマップに必要なものを作成
+                depthImage = new WriteableBitmap(depthFrameDesc.Width, depthFrameDesc.Height, 96, 96, PixelFormats.Gray8, null);
+                depthBuffer = new ushort[depthFrameDesc.LengthInPixels];
+                depthBitmapBuffer = new byte[depthFrameDesc.LengthInPixels];
+                depthRect = new Int32Rect(0, 0, depthFrameDesc.Width, depthFrameDesc.Height);
+                depthStride = (int)(depthFrameDesc.Width);
+
+                ImageDepth.Source = depthImage;
+
+                // 初期の位置表示座標(中心点)
+                depthPoint = new Point(depthFrameDesc.Width / 2, depthFrameDesc.Height / 2);
 
             }
             catch (Exception ex)
@@ -74,43 +82,48 @@ namespace Kinectv2wpf
         }
 
         // 更新処理
-        void colorFrameReader_FrameArrived( object sender, ColorFrameArrivedEventArgs e)
+        void depthFrameReader_FrameArrived(object sender, DepthFrameArrivedEventArgs e)
         {
-            UpdateColorFrame(e);
-            DrowColorFrame();
+            UpdateDepthFrame(e);
+            DrowDepthFrame();
         }
 
-        // 描画処理
-        private void UpdateColorFrame( ColorFrameArrivedEventArgs e)
+        private void UpdateDepthFrame( DepthFrameArrivedEventArgs e)
         {
-            // カラーフレームを取得する
-            using ( var colorFrame = e.FrameReference.AcquireFrame())
+            using ( var depthFrame = e.FrameReference.AcquireFrame())
             {
-                if (colorFrame == null)
+                if (depthFrame == null)
                 {
                     return;
                 }
 
-                // BGRAデータを取得
-                colorBuffer = new byte[colorFrameDesc.LengthInPixels * colorFrameDesc.BytesPerPixel];
-                colorFrame.CopyConvertedFrameDataToArray(colorBuffer, ColorImageFormat.Bgra);
+                // Depthデータを取得
+                depthFrame.CopyFrameDataToArray(depthBuffer);
             }
         }
 
-        private void DrowColorFrame()
+        private void DrowDepthFrame()
         {
-            // ビットマップする
-            colorBitmap.WritePixels(colorRect, colorBuffer, colorStride, 0);
+            // 距離情報の表示を更新する
+            UpdateDepthValue();
+
+            // 0~8000のデータを0~65535のデータに変換する(見やすく)
+            for(int i = 0 ; i < depthBuffer.Length ; i++)
+            {
+                depthBitmapBuffer[i] = (byte)(depthBuffer[i] % 255);
+            }
+
+            depthImage.WritePixels(depthRect, depthBuffer, depthStride, 0);            
         }
 
 
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (colorFrameReader != null)
+            if ( depthFrameReader != null)
             {
-                colorFrameReader.Dispose();
-                colorFrameReader = null;
+                depthFrameReader.Dispose();
+                depthFrameReader = null;
             }
 
             if (kinect != null)
@@ -120,5 +133,43 @@ namespace Kinectv2wpf
             }
         }
 
+        // クリックした座標を取得
+        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            depthPoint = e.GetPosition(this);
+        }
+
+        // クリックした座標の距離を表示
+        private void UpdateDepthValue()
+        {
+            CanvasPoint.Children.Clear();
+
+            // クリックしたポイントを表示する
+            var ellipse = new Ellipse()
+            {
+                Width = R,
+                Height = R,
+                StrokeThickness = R / 4,
+                Stroke = Brushes.Red,
+            };
+            Canvas.SetLeft(ellipse, depthPoint.X - (R / 2));
+            Canvas.SetTop(ellipse, depthPoint.Y - (R / 2));
+            CanvasPoint.Children.Add(ellipse);
+
+            // クリックしたポイントのインデックスを計算する
+            int depthindex = (int)((depthPoint.Y * depthFrameDesc.Width) + depthPoint.X);
+
+            // クリックしたポインタの距離を表示する
+            var text = new TextBlock()
+            {
+                Text = string.Format("{0}mm", depthBuffer[depthindex]),
+                FontSize = 20,
+                Foreground = Brushes.Green,
+            };
+            Canvas.SetLeft(text, depthPoint.X);
+            Canvas.SetTop(text, depthPoint.Y - R);
+            CanvasPoint.Children.Add(text);
+
+        }
     }
 }

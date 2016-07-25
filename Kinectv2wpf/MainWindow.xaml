@@ -6,16 +6,11 @@
         xmlns:local="clr-namespace:Kinectv2wpf"
         mc:Ignorable="d"
         Title="MainWindow" 
-        Height="350" 
-        Width="525" 
         Loaded="Window_Loaded" 
         Closing="Window_Closing" 
-        SizeToContent="WidthAndHeight">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="33*"/>
-            <ColumnDefinition Width="14*"/>
-        </Grid.ColumnDefinitions>
-        <Image x:Name="ImageColor" Width="960" Height="540" Grid.ColumnSpan="2" Margin="0,0,-443,-221" />
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+    <Grid Width="512" Height="424">
+        <Image x:Name="ImageDepth" />
+        <Canvas x:Name="CanvasPoint" />
     </Grid>
 </Window>
