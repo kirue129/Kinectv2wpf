@@ -9,10 +9,8 @@
         Width="512"
         Height="424"
         Loaded="Window_Loaded" 
-        Closing="Window_Closing" 
-        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+        Closing="Window_Closing">
     <Grid Width="512" Height="424">
-        <Image x:Name="ImageDepth" />
-        <Canvas x:Name="CanvasPoint" />
+        <Image x:Name="ImageColor" Width="512" Height="424"/>
     </Grid>
 </Window>
