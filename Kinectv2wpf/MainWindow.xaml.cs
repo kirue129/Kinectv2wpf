@@ -27,28 +27,28 @@ namespace Kinectv2wpf
             InitializeComponent();
         }
 
-        private void Window_Loaded( object sender, RoutedEventArgs e)
+        private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             try
             {
                 kinect = KinectSensor.GetDefault();
-                if ( kinect == null)
+                if (kinect == null)
                 {
                     throw new Exception("Kinectを開けません");
                 }
 
                 kinect.Open();
             }
-            catch( Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
                 Close();
             }
         }
 
-        private void Window_Closing( object sender, System.ComponentModel.CancelEventArgs e)
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if ( kinect != null)
+            if (kinect != null)
             {
                 kinect.Close();
                 kinect = null;

@@ -1,0 +1,16 @@
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\bin\Release\Kinectv2wpf.exe.config
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\bin\Release\Kinectv2wpf.exe
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\bin\Release\Kinectv2wpf.pdb
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\bin\Release\Microsoft.Kinect.dll
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\bin\Release\Microsoft.Kinect.xml
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\Kinectv2wpf.csprojResolveAssemblyReference.cache
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\MainWindow.g.cs
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\App.g.cs
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\Kinectv2wpf_MarkupCompile.cache
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\Kinectv2wpf_MarkupCompile.lref
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\MainWindow.baml
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\Kinectv2wpf.g.resources
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\Kinectv2wpf.Properties.Resources.resources
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\Kinectv2wpf.csproj.GenerateResource.Cache
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\Kinectv2wpf.exe
+C:\Users\e27_r_miyamoto\Documents\source\kinect\Kinectv2wpf\Kinectv2wpf\obj\Release\Kinectv2wpf.pdb
