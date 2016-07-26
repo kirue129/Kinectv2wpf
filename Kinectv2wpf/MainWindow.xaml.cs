@@ -24,20 +24,10 @@ namespace Kinectv2wpf
         // Kinect SDK
         KinectSensor kinect;
 
-        BodyIndexFrameReader bodyIndexFrameReader;
-        FrameDescription bodyIndexFrameDesc;
+        BodyFrameReader bodyFrameReader;
 
         // データ取得用
-        byte[] bodyIndexBuffer;
-
-        // 表示用
-        WriteableBitmap bodyIndexColorImage;
-        Int32Rect bodyIndexColorRect;
-        int bodyIndexColorStride;
-        int bodyIndexColorBytesPerPixel = 4;
-        byte[] bodyIndexColorBuffer;
-
-        Color[] bodyIndexColors;
+        Body[] bodies;
 
         public MainWindow()
         {
@@ -56,36 +46,12 @@ namespace Kinectv2wpf
                 }
                 kinect.Open();
 
-                // 表示のためのデータを作成
-                bodyIndexFrameDesc = kinect.DepthFrameSource.FrameDescription;
-
                 // ボディーリーダーを開く
-                bodyIndexFrameReader = kinect.BodyIndexFrameSource.OpenReader();
-                bodyIndexFrameReader.FrameArrived += bodyIndexFrameReader_FrameArrived;
+                bodyFrameReader = kinect.BodyFrameSource.OpenReader();
+                bodyFrameReader.FrameArrived += bodyFrameReader_FrameArrived;
 
-                // ボディインデックスデータ用のバッファ
-                bodyIndexBuffer = new byte[bodyIndexFrameDesc.LengthInPixels];
-
-                // 表示のためにビットマップに必要なものを作成
-                bodyIndexColorImage = new WriteableBitmap(bodyIndexFrameDesc.Width, bodyIndexFrameDesc.Height, 96, 96, PixelFormats.Bgra32, null);
-                bodyIndexColorRect = new Int32Rect(0, 0, bodyIndexFrameDesc.Width, bodyIndexFrameDesc.Height);
-                bodyIndexColorStride = bodyIndexFrameDesc.Width * bodyIndexColorBytesPerPixel;
-
-                // ボディインデックスデータをBGRA(カラー)データにするためのバッファ
-                bodyIndexColorBuffer = new byte[bodyIndexFrameDesc.LengthInPixels * bodyIndexColorBytesPerPixel];
-
-                ImageBodyIndex.Source = bodyIndexColorImage;
-
-                // 色付けするてめの色の配列を作成する
-                bodyIndexColors = new Color[]
-                {
-                    Colors.Red,
-                    Colors.Blue,
-                    Colors.Green,
-                    Colors.Yellow,
-                    Colors.Pink,
-                    Colors.Purple,
-                };              
+                // Bodyを入れる配列を作る
+                bodies = new Body[kinect.BodyFrameSource.BodyCount];
 
             }
             catch (Exception ex)
@@ -96,61 +62,80 @@ namespace Kinectv2wpf
         }
 
         // 更新処理
-        void bodyIndexFrameReader_FrameArrived(object sender, BodyIndexFrameArrivedEventArgs e)
+        void bodyFrameReader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
         {
-            UpdateBodyIndexFrame(e);
-            DrowBodyIndexFrame();
+            UpdateBodyFrame(e);
+            DrowBodyFrame();
         }
 
-        private void UpdateBodyIndexFrame( BodyIndexFrameArrivedEventArgs e)
+        // ボディの更新
+        private void UpdateBodyFrame( BodyFrameArrivedEventArgs e)
         {
-            using ( var bodyIndexFrame = e.FrameReference.AcquireFrame())
+            using ( var bodyFrame = e.FrameReference.AcquireFrame())
             {
-                if (bodyIndexFrame == null)
+                if (bodyFrame == null)
                 {
                     return;
                 }
 
-                // ボディインデックスデータを取得する
-                bodyIndexFrame.CopyFrameDataToArray(bodyIndexBuffer);
+                // ボディデータを取得する
+                bodyFrame.GetAndRefreshBodyData(bodies);
             }
         }
 
-        private void DrowBodyIndexFrame()
+        // ボディの表示
+        private void DrowBodyFrame()
         {
-            // ボディインデックスデータをBRGAデータに変換する
-            for(int i = 0; i < bodyIndexBuffer.Length; i++)
-            {
-                var index = bodyIndexBuffer[i];
-                var colorIndex = i * 4;
+            CanvasBody.Children.Clear();
 
-                if( index != 255)
+            // 追跡しているBodyのみループする
+            foreach(var body in bodies.Where(b => b.IsTracked))
+            {
+                foreach(var joint in body.Joints)
                 {
-                    var color = bodyIndexColors[index];
-                    bodyIndexColorBuffer[colorIndex + 0] = color.B;
-                    bodyIndexColorBuffer[colorIndex + 1] = color.G;
-                    bodyIndexColorBuffer[colorIndex + 2] = color.R;
-                    bodyIndexColorBuffer[colorIndex + 3] = 255;
-                }
-                else
-                {
-                    bodyIndexColorBuffer[colorIndex + 0] = 0;
-                    bodyIndexColorBuffer[colorIndex + 1] = 0;
-                    bodyIndexColorBuffer[colorIndex + 2] = 0;
-                    bodyIndexColorBuffer[colorIndex + 3] = 255;
+                    // 手の位置が追跡状態
+                    if(joint.Value.TrackingState == TrackingState.Tracked)
+                    {
+                        DrawEllipse(joint.Value, 10, Brushes.Blue);
+                    }
+                    // 手の位置が推測状態
+                    else if(joint.Value.TrackingState == TrackingState.Inferred)
+                    {
+                        DrawEllipse(joint.Value, 10, Brushes.Yellow);
+                    }
                 }
             }
+        }
 
-            // ビットマップにする
-            bodyIndexColorImage.WritePixels(bodyIndexColorRect, bodyIndexColorBuffer, bodyIndexColorStride, 0);            
+        private void DrawEllipse(Joint joint, int R, Brush brush)
+        {
+            var ellipse = new Ellipse()
+            {
+                Width = R,
+                Height = R,
+                Fill = brush,
+            };
+
+            // カメラ座標系をDepth座標系に変換する
+            var point = kinect.CoordinateMapper.MapCameraPointToDepthSpace(joint.Position);
+            if((point.X < 0) || (point.Y < 0))
+            {
+                return;
+            }
+
+            // Depth座標系で円を配置する
+            Canvas.SetLeft(ellipse, point.X - (R / 2));
+            Canvas.SetTop(ellipse, point.Y - (R / 2));
+
+            CanvasBody.Children.Add(ellipse);
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if ( bodyIndexFrameReader != null)
+            if ( bodyFrameReader != null)
             {
-                bodyIndexFrameReader.Dispose();
-                bodyIndexFrameReader = null;
+                bodyFrameReader.Dispose();
+                bodyFrameReader = null;
             }
 
             if (kinect != null)
