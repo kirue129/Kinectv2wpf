@@ -97,6 +97,17 @@ namespace Kinectv2wpf
                     if(joint.Value.TrackingState == TrackingState.Tracked)
                     {
                         DrawEllipse(joint.Value, 10, Brushes.Blue);
+
+                        // 左手が追跡していたら、手の状態を表示する
+                        if ( joint.Value.JointType == JointType.HandLeft)
+                        {
+                            DrawHandState(body.Joints[JointType.HandLeft], body.HandLeftConfidence, body.HandLeftState);
+                        }
+                        // 右手を追跡していたら、手の状態を表示する
+                        else if (joint.Value.JointType == JointType.HandRight)
+                        {
+                            DrawHandState(body.Joints[JointType.HandRight], body.HandRightConfidence, body.HandRightState);
+                        }
                     }
                     // 手の位置が推測状態
                     else if(joint.Value.TrackingState == TrackingState.Inferred)
@@ -104,6 +115,46 @@ namespace Kinectv2wpf
                         DrawEllipse(joint.Value, 10, Brushes.Yellow);
                     }
                 }
+            }
+        }
+
+        private void DrawHandState(Joint joint,TrackingConfidence trackingConfidence, HandState handState)
+        {
+            // 手の追跡信頼性が高い
+            if (trackingConfidence != TrackingConfidence.High)
+            {
+                return;
+            }
+
+            // 手が開いている(バー)
+            if (handState == HandState.Open)
+            {
+                DrawEllipse(joint, 40, new SolidColorBrush(new Color()
+                {
+                    R = 255,
+                    G = 255,
+                    A = 128
+                }));
+            }
+            // チョキのような感じ
+            else if (handState == HandState.Lasso)
+            {
+                DrawEllipse(joint, 40, new SolidColorBrush(new Color()
+                {
+                    R = 255,
+                    B = 255,
+                    A = 128
+                }));
+            }
+            // 手が閉じている(グー)
+            else if (handState == HandState.Closed)
+            {
+                DrawEllipse(joint, 40, new SolidColorBrush(new Color()
+                {
+                    G = 255,
+                    B = 255,
+                    A = 128
+                }));
             }
         }
 
