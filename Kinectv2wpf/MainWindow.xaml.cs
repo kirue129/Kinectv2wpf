@@ -24,16 +24,20 @@ namespace Kinectv2wpf
         // Kinect SDK
         KinectSensor kinect;
 
-        InfraredFrameReader infraredFrameReader;
-        FrameDescription infraredFrameDesc;
+        BodyIndexFrameReader bodyIndexFrameReader;
+        FrameDescription bodyIndexFrameDesc;
+
+        // データ取得用
+        byte[] bodyIndexBuffer;
 
         // 表示用
-        WriteableBitmap infraredBitmap;
-        ushort[] infraredBuffer;
-        Int32Rect infraredRect;
-        int infraredStride;
+        WriteableBitmap bodyIndexColorImage;
+        Int32Rect bodyIndexColorRect;
+        int bodyIndexColorStride;
+        int bodyIndexColorBytesPerPixel = 4;
+        byte[] bodyIndexColorBuffer;
 
-        const int R = 20;
+        Color[] bodyIndexColors;
 
         public MainWindow()
         {
@@ -52,21 +56,36 @@ namespace Kinectv2wpf
                 }
                 kinect.Open();
 
-                // 赤外線画像リーダーを取得する
-                infraredFrameDesc = kinect.InfraredFrameSource.FrameDescription;
+                // 表示のためのデータを作成
+                bodyIndexFrameDesc = kinect.DepthFrameSource.FrameDescription;
 
-                // 赤外線リーダーを開く
-                infraredFrameReader = kinect.InfraredFrameSource.OpenReader();
-                infraredFrameReader.FrameArrived += infraredFrameReader_FrameArrived;
+                // ボディーリーダーを開く
+                bodyIndexFrameReader = kinect.BodyIndexFrameSource.OpenReader();
+                bodyIndexFrameReader.FrameArrived += bodyIndexFrameReader_FrameArrived;
+
+                // ボディインデックスデータ用のバッファ
+                bodyIndexBuffer = new byte[bodyIndexFrameDesc.LengthInPixels];
 
                 // 表示のためにビットマップに必要なものを作成
-                infraredBuffer = new ushort[infraredFrameDesc.LengthInPixels];
-                infraredBitmap = new WriteableBitmap(infraredFrameDesc.Width, infraredFrameDesc.Height, 96, 96, PixelFormats.Gray16, null);
-                infraredRect = new Int32Rect(0, 0, infraredFrameDesc.Width, infraredFrameDesc.Height);
-                infraredStride = infraredFrameDesc.Width * (int)infraredFrameDesc.BytesPerPixel;
+                bodyIndexColorImage = new WriteableBitmap(bodyIndexFrameDesc.Width, bodyIndexFrameDesc.Height, 96, 96, PixelFormats.Bgra32, null);
+                bodyIndexColorRect = new Int32Rect(0, 0, bodyIndexFrameDesc.Width, bodyIndexFrameDesc.Height);
+                bodyIndexColorStride = bodyIndexFrameDesc.Width * bodyIndexColorBytesPerPixel;
 
-                ImageColor.Source = infraredBitmap;
-                
+                // ボディインデックスデータをBGRA(カラー)データにするためのバッファ
+                bodyIndexColorBuffer = new byte[bodyIndexFrameDesc.LengthInPixels * bodyIndexColorBytesPerPixel];
+
+                ImageBodyIndex.Source = bodyIndexColorImage;
+
+                // 色付けするてめの色の配列を作成する
+                bodyIndexColors = new Color[]
+                {
+                    Colors.Red,
+                    Colors.Blue,
+                    Colors.Green,
+                    Colors.Yellow,
+                    Colors.Pink,
+                    Colors.Purple,
+                };              
 
             }
             catch (Exception ex)
@@ -77,40 +96,61 @@ namespace Kinectv2wpf
         }
 
         // 更新処理
-        void infraredFrameReader_FrameArrived(object sender, InfraredFrameArrivedEventArgs e)
+        void bodyIndexFrameReader_FrameArrived(object sender, BodyIndexFrameArrivedEventArgs e)
         {
-            UpdateInfraredFrame(e);
-            DrowInfraredFrame();
+            UpdateBodyIndexFrame(e);
+            DrowBodyIndexFrame();
         }
 
-        private void UpdateInfraredFrame( InfraredFrameArrivedEventArgs e)
+        private void UpdateBodyIndexFrame( BodyIndexFrameArrivedEventArgs e)
         {
-            // からあーフレームを取得する
-            using ( var infraredFrame = e.FrameReference.AcquireFrame())
+            using ( var bodyIndexFrame = e.FrameReference.AcquireFrame())
             {
-                if (infraredFrame == null)
+                if (bodyIndexFrame == null)
                 {
                     return;
                 }
 
-                // 赤外線データを取得
-                infraredFrame.CopyFrameDataToArray(infraredBuffer);
+                // ボディインデックスデータを取得する
+                bodyIndexFrame.CopyFrameDataToArray(bodyIndexBuffer);
             }
         }
 
-        private void DrowInfraredFrame()
+        private void DrowBodyIndexFrame()
         {
-            infraredBitmap.WritePixels(infraredRect, infraredBuffer, infraredStride, 0);            
+            // ボディインデックスデータをBRGAデータに変換する
+            for(int i = 0; i < bodyIndexBuffer.Length; i++)
+            {
+                var index = bodyIndexBuffer[i];
+                var colorIndex = i * 4;
+
+                if( index != 255)
+                {
+                    var color = bodyIndexColors[index];
+                    bodyIndexColorBuffer[colorIndex + 0] = color.B;
+                    bodyIndexColorBuffer[colorIndex + 1] = color.G;
+                    bodyIndexColorBuffer[colorIndex + 2] = color.R;
+                    bodyIndexColorBuffer[colorIndex + 3] = 255;
+                }
+                else
+                {
+                    bodyIndexColorBuffer[colorIndex + 0] = 0;
+                    bodyIndexColorBuffer[colorIndex + 1] = 0;
+                    bodyIndexColorBuffer[colorIndex + 2] = 0;
+                    bodyIndexColorBuffer[colorIndex + 3] = 255;
+                }
+            }
+
+            // ビットマップにする
+            bodyIndexColorImage.WritePixels(bodyIndexColorRect, bodyIndexColorBuffer, bodyIndexColorStride, 0);            
         }
-
-
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if ( infraredFrameReader != null)
+            if ( bodyIndexFrameReader != null)
             {
-                infraredFrameReader.Dispose();
-                infraredFrameReader = null;
+                bodyIndexFrameReader.Dispose();
+                bodyIndexFrameReader = null;
             }
 
             if (kinect != null)
