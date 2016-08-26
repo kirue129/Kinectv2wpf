@@ -23,11 +23,23 @@ namespace Kinectv2wpf
     {
         // Kinect SDK
         KinectSensor kinect;
+        MultiSourceFrameReader multReader;
 
-        BodyFrameReader bodyFrameReader;
+        CoordinateMapper mapper;
 
-        // データ取得用
-        Body[] bodies;
+
+        // Color
+        FrameDescription colorFrameDesc;
+        ColorImageFormat colorFormat = ColorImageFormat.Bgra;
+        byte[] colorBuffer;
+
+        // Depth
+        FrameDescription depthFrameDesc;
+        ushort[] depthBuffer;
+
+        // BodyIndex
+        byte[] bodyIndexBuffer;
+
 
         public MainWindow()
         {
@@ -46,14 +58,30 @@ namespace Kinectv2wpf
                 }
                 kinect.Open();
 
-                // ボディーリーダーを開く
-                bodyFrameReader = kinect.BodyFrameSource.OpenReader();
-                bodyFrameReader.FrameArrived += bodyFrameReader_FrameArrived;
+                mapper = kinect.CoordinateMapper;
 
-                // Bodyを入れる配列を作る
-                bodies = new Body[kinect.BodyFrameSource.BodyCount];
+                // カラー画像の情報を作成する（BGRAフォーマット）
+                colorFrameDesc = kinect.ColorFrameSource.CreateFrameDescription(colorFormat);
+                colorBuffer = new byte[colorFrameDesc.LengthInPixels * colorFrameDesc.BytesPerPixel];
+
+                // Depthデータの情報を取得する
+                depthFrameDesc = kinect.DepthFrameSource.FrameDescription;
+                depthBuffer = new ushort[depthFrameDesc.LengthInPixels];
+
+                // BodyIndexデータの情報を取得する
+                var bodyIndexFrameDecs = kinect.BodyIndexFrameSource.FrameDescription;
+                bodyIndexBuffer = new byte[bodyIndexFrameDecs.LengthInPixels];
+
+                // フレームリーダーを開く
+                multReader = kinect.OpenMultiSourceFrameReader(
+                    FrameSourceTypes.Color |
+                    FrameSourceTypes.Depth |
+                    FrameSourceTypes.BodyIndex );
+
+                multReader.MultiSourceFrameArrived += multReader_MultiSourceFrameArrived;
 
             }
+
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
@@ -61,6 +89,74 @@ namespace Kinectv2wpf
             }
         }
 
+        void multReader_MultiSourceFrameArrived( object sender, MultiSourceFrameArrivedEventArgs e)
+        {
+            var multiFrame = e.FrameReference.AcquireFrame();
+            if (multiFrame == null)
+            {
+                return;
+            }
+
+            // 各種データを取得する
+            UpdateColorFrame(multiFrame);
+            UpdateBodyIndexFrame(multiFrame);
+            UpdateDepthFrame(multiFrame);
+
+            // それぞれの座標系で描画する
+            if (IsColorCoodinate.IsChecked == true)
+            {
+                DrawColorCoodinate();
+            }
+            else
+            {
+                DrawDepthCoodinate();
+            }
+        }
+
+        private void DrawColorCoodinate()
+        {
+            // カラー画像の解像度でデータを作る
+            var colorImageBuffer = new byte[colorFrameDesc.LengthInPixels * colorFrameDesc.BytesPerPixel];
+
+            // カラー座標系に対応するDepth座標系の一覧を取得する
+            var depthSpace = new DepthSpacePoint[colorFrameDesc.LengthInPixels];
+            mapper.MapColorFrameToDepthSpace(depthBuffer, depthSpace);
+
+            // 並列で処理する
+            Parallel.For(0, colorFrameDesc.LengthInPixels, i =>
+            {
+                int depthX = (int)depthSpace[i].X;
+                int depthY = (int)depthSpace[i].Y;
+                if ((depthX < 0) || (depthFrameDesc.Width <= depthX) || 
+                    (depthY < 0) || (depthFrameDesc.Height <= depthY) )
+                {
+                    return;
+                }
+
+                // Depth座標系のインデックス
+                int depthIndex = (depthX * depthFrameDesc.Width) + depthX;
+                int bodyIndex = bodyIndexBuffer[depthIndex];
+
+                // 人を検出した位置だけ色を付ける
+                if (bodyIndex == 255)
+                {
+                    return;
+                }
+
+                // カラー画像を設定する
+                int colorImageIndex = (int)(i * colorFrameDesc.BytesPerPixel);
+                colorImageBuffer[colorImageIndex + 0] = colorBuffer[colorImageIndex + 0];
+                colorImageBuffer[colorImageIndex + 1] = colorBuffer[colorImageIndex + 1];
+                colorImageBuffer[colorImageIndex + 2] = colorBuffer[colorImageIndex + 2];
+            });
+
+            ImageColor.Source = BitmapSource.Create(
+                colorFrameDesc.Width, colorFrameDesc.Height, 96, 96,
+                PixelFormats.Bgr32, null, colorImageBuffer,
+                (int)(colorFrameDesc.Width * colorFrameDesc.BytesPerPixel));
+        }
+
+        /*
         // 更新処理
         void bodyFrameReader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
         {
@@ -195,6 +291,7 @@ namespace Kinectv2wpf
                 kinect = null;
             }
         }
+        */
 
     }
 }
