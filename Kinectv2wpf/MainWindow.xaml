@@ -10,7 +10,17 @@
         Height="424"
         Loaded="Window_Loaded" 
         Closing="Window_Closing">
-    <Grid Width="512" Height="424">
-        <Canvas x:Name="CanvasBody" Width="512" Height="424"/>
+    <Grid Width="960" Height="540">
+        <Image x:Name="ImageColor" />
+
+        <GroupBox Header="座標系" Width="130" Height="60"
+                  HorizontalAlignment="Left" VerticalAlignment="Top"
+                  Background="White">
+            <StackPanel Orientation="Vertical" Margin="5">
+                <RadioButton Content="カラー座像系"
+                             x:Name="IsColorCoodinate" IsChecked="True"/>
+                <RadioButton Content="Depth座標系"/>
+            </StackPanel>
+        </GroupBox>
     </Grid>
 </Window>
