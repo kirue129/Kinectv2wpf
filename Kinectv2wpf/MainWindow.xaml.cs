@@ -113,6 +113,53 @@ namespace Kinectv2wpf
             }
         }
 
+        // カラー画像更新処理
+        private void UpdateColorFrame(MultiSourceFrame multiFrame)
+        {
+            // カラーフレームを取得する
+            using (var colorFrame = multiFrame.ColorFrameReference.AcquireFrame())
+            {
+                if (colorFrame == null)
+                {
+                    return;
+                }
+
+                // BGRAデータを取得
+                colorFrame.CopyConvertedFrameDataToArray(colorBuffer, ColorImageFormat.Bgra);
+            }
+        }
+
+        // BodyIndex更新処理
+        private void UpdateBodyIndexFrame(MultiSourceFrame multiFrame)
+        {
+            using (var bodyIndexFrame = multiFrame.BodyIndexFrameReference.AcquireFrame())
+            {
+                if (bodyIndexFrame == null)
+                {
+                    return;
+                }
+
+                // ボディインデックスデータを取得する
+                bodyIndexFrame.CopyFrameDataToArray(bodyIndexBuffer);
+            }
+        }
+
+        // Depth更新処理
+        private void UpdateDepthFrame(MultiSourceFrame multiFrame)
+        {
+            using (var depthFrame = multiFrame.DepthFrameReference.AcquireFrame())
+            {
+                if (depthFrame == null)
+                {
+                    return;
+                }
+
+                // Depthデータを取得
+                depthFrame.CopyFrameDataToArray(depthBuffer);
+            }
+        }
+
+
         private void DrawColorCoodinate()
         {
             // カラー画像の解像度でデータを作る
@@ -134,7 +181,7 @@ namespace Kinectv2wpf
                 }
 
                 // Depth座標系のインデックス
-                int depthIndex = (depthX * depthFrameDesc.Width) + depthX;
+                int depthIndex = (depthY * depthFrameDesc.Width) + depthX;
                 int bodyIndex = bodyIndexBuffer[depthIndex];
 
                 // 人を検出した位置だけ色を付ける
@@ -156,142 +203,48 @@ namespace Kinectv2wpf
                 (int)(colorFrameDesc.Width * colorFrameDesc.BytesPerPixel));
         }
 
-        /*
-        // 更新処理
-        void bodyFrameReader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
+        private void DrawDepthCoodinate()
         {
-            UpdateBodyFrame(e);
-            DrowBodyFrame();
-        }
+            // Depth画像の解像度でデータを作る
+            var colorImageBuffer = new byte[depthFrameDesc.LengthInPixels * colorFrameDesc.BytesPerPixel];
 
-        // ボディの更新
-        private void UpdateBodyFrame( BodyFrameArrivedEventArgs e)
-        {
-            using ( var bodyFrame = e.FrameReference.AcquireFrame())
+            // Depth座標系に対応するカラー座標系の一覧を取得する
+            var colorSpace = new ColorSpacePoint[depthFrameDesc.LengthInPixels];
+            mapper.MapDepthFrameToColorSpace(depthBuffer, colorSpace);
+
+            // 並列で処理する
+            Parallel.For(0, depthFrameDesc.LengthInPixels, i =>
             {
-                if (bodyFrame == null)
+                int colorX = (int)colorSpace[i].X;
+                int colorY = (int)colorSpace[i].Y;
+                if ((colorX < 0) || (colorFrameDesc.Width <= colorX) || (colorY < 0) || (colorFrameDesc.Height <= colorY))
                 {
                     return;
                 }
 
-                // ボディデータを取得する
-                bodyFrame.GetAndRefreshBodyData(bodies);
-            }
-        }
+                // カラー座標系のインデックス
+                int colorIndex = (colorY * colorFrameDesc.Width) + colorX;
+                int bodyIndex = bodyIndexBuffer[i];
 
-        // ボディの表示
-        private void DrowBodyFrame()
-        {
-            CanvasBody.Children.Clear();
-
-            // 追跡しているBodyのみループする
-            foreach(var body in bodies.Where(b => b.IsTracked))
-            {
-                foreach(var joint in body.Joints)
+                // 人を検出した位置だけ色を塗る
+                if (bodyIndex == 255)
                 {
-                    // 手の位置が追跡状態
-                    if(joint.Value.TrackingState == TrackingState.Tracked)
-                    {
-                        DrawEllipse(joint.Value, 10, Brushes.Blue);
-
-                        // 左手が追跡していたら、手の状態を表示する
-                        if ( joint.Value.JointType == JointType.HandLeft)
-                        {
-                            DrawHandState(body.Joints[JointType.HandLeft], body.HandLeftConfidence, body.HandLeftState);
-                        }
-                        // 右手を追跡していたら、手の状態を表示する
-                        else if (joint.Value.JointType == JointType.HandRight)
-                        {
-                            DrawHandState(body.Joints[JointType.HandRight], body.HandRightConfidence, body.HandRightState);
-                        }
-                    }
-                    // 手の位置が推測状態
-                    else if(joint.Value.TrackingState == TrackingState.Inferred)
-                    {
-                        DrawEllipse(joint.Value, 10, Brushes.Yellow);
-                    }
+                    return;
                 }
-            }
+
+                // カラー画像を設定する
+                int colorImageIndex = (int)(i * colorFrameDesc.BytesPerPixel);
+                int colorBufferIndex = (int)(colorIndex * colorFrameDesc.BytesPerPixel);
+                colorImageBuffer[colorImageIndex + 0] = colorBuffer[colorBufferIndex + 0];
+                colorImageBuffer[colorImageIndex + 1] = colorBuffer[colorBufferIndex + 1];
+                colorImageBuffer[colorImageIndex + 2] = colorBuffer[colorBufferIndex + 2];
+            });
+
+            ImageColor.Source = BitmapSource.Create(
+                depthFrameDesc.Width, depthFrameDesc.Height, 96, 96,
+                PixelFormats.Bgr32, null, colorImageBuffer,
+                (int)(depthFrameDesc.Width * colorFrameDesc.BytesPerPixel) );
         }
-
-        private void DrawHandState(Joint joint,TrackingConfidence trackingConfidence, HandState handState)
-        {
-            // 手の追跡信頼性が高い
-            if (trackingConfidence != TrackingConfidence.High)
-            {
-                return;
-            }
-
-            // 手が開いている(バー)
-            if (handState == HandState.Open)
-            {
-                DrawEllipse(joint, 40, new SolidColorBrush(new Color()
-                {
-                    R = 255,
-                    G = 255,
-                    A = 128
-                }));
-            }
-            // チョキのような感じ
-            else if (handState == HandState.Lasso)
-            {
-                DrawEllipse(joint, 40, new SolidColorBrush(new Color()
-                {
-                    R = 255,
-                    B = 255,
-                    A = 128
-                }));
-            }
-            // 手が閉じている(グー)
-            else if (handState == HandState.Closed)
-            {
-                DrawEllipse(joint, 40, new SolidColorBrush(new Color()
-                {
-                    G = 255,
-                    B = 255,
-                    A = 128
-                }));
-            }
-        }
-
-        private void DrawEllipse(Joint joint, int R, Brush brush)
-        {
-            var ellipse = new Ellipse()
-            {
-                Width = R,
-                Height = R,
-                Fill = brush,
-            };
-
-            // カメラ座標系をDepth座標系に変換する
-            var point = kinect.CoordinateMapper.MapCameraPointToDepthSpace(joint.Position);
-            if((point.X < 0) || (point.Y < 0))
-            {
-                return;
-            }
-
-            // Depth座標系で円を配置する
-            Canvas.SetLeft(ellipse, point.X - (R / 2));
-            Canvas.SetTop(ellipse, point.Y - (R / 2));
-
-            CanvasBody.Children.Add(ellipse);
-        }
-
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            if ( bodyFrameReader != null)
-            {
-                bodyFrameReader.Dispose();
-                bodyFrameReader = null;
-            }
-
-            if (kinect != null)
-            {
-                kinect.Close();
-                kinect = null;
-            }
-        }
-        */
 
     }
 }
