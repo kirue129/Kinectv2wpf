@@ -7,18 +7,11 @@
         mc:Ignorable="d"
         Title="MainWindow"
         Loaded="Window_Loaded" 
-        Closing="Window_Closing">
-    <Grid Width="960" Height="540">
-        <Image x:Name="ImageColor" />
-
-        <GroupBox Header="座標系" Width="130" Height="60"
-                  HorizontalAlignment="Left" VerticalAlignment="Top"
-                  Background="White">
-            <StackPanel Orientation="Vertical" Margin="5">
-                <RadioButton Content="カラー座像系"
-                             x:Name="IsColorCoodinate" IsChecked="True"/>
-                <RadioButton Content="Depth座標系"/>
-            </StackPanel>
-        </GroupBox>
+        Closing="Window_Closing" Height="120" Width="480">
+    <Grid>
+        <StackPanel Orientation="Vertical">
+            <Button Content="録音開始" Margin="10" Click="Button_Click"/>
+            <Button Content="録音停止" Margin="10" Click="Button_Click_1"/>
+        </StackPanel>
     </Grid>
 </Window>
