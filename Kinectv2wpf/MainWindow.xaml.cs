@@ -246,5 +246,19 @@ namespace Kinectv2wpf
                 (int)(depthFrameDesc.Width * colorFrameDesc.BytesPerPixel) );
         }
 
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (multReader != null)
+            {
+                multReader.Dispose();
+                multReader = null;
+            }
+
+            if (kinect != null)
+            {
+                kinect.Close();
+                kinect = null;
+            }
+        }
     }
 }

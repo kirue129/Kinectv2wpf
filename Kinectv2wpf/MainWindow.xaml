@@ -6,11 +6,10 @@
         xmlns:local="clr-namespace:Kinectv2wpf"
         mc:Ignorable="d"
         Title="MainWindow"
-        Width="512"
-        Height="424"
-        Loaded="Window_Loaded">
-    <Grid Margin="0,0,2,-21">
-        <Image x:Name="ImageColor" Margin="0,0,458,152" />
+        Loaded="Window_Loaded" 
+        Closing="Window_Closing">
+    <Grid Width="960" Height="540">
+        <Image x:Name="ImageColor" />
 
         <GroupBox Header="座標系" Width="130" Height="60"
                   HorizontalAlignment="Left" VerticalAlignment="Top"
