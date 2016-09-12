@@ -7,11 +7,13 @@
         mc:Ignorable="d"
         Title="MainWindow"
         Loaded="Window_Loaded" 
-        Closing="Window_Closing" Height="120" Width="480">
+        Closing="Window_Closing" Height="180" Width="360">
     <Grid>
         <StackPanel Orientation="Vertical">
-            <Button Content="録音開始" Margin="10" Click="Button_Click"/>
-            <Button Content="録音停止" Margin="10" Click="Button_Click_1"/>
+            <Button Content="録音開始" Margin="10" Click="Button_Click_Start"/>
+            <Button Content="録音停止" Margin="10" Click="Button_Click_Stop"/>
+            <Button Content="再生" Margin="10" Click="Button_Click_Play"/>
+            <MediaElement x:Name="MediaWave" LoadedBehavior="Manual"/>
         </StackPanel>
     </Grid>
 </Window>

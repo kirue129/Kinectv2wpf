@@ -1,8 +1,8 @@
-﻿using Microsoft.Kinect;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,6 +14,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Kinect;
+using System.Diagnostics;
 
 namespace Kinectv2wpf
 {
@@ -28,7 +30,11 @@ namespace Kinectv2wpf
 
         // 音声データ
         byte[] audioBuffer;
-        WaveFile wavefile = new WaveFile();
+
+        string fileName = "KinectAudio.wav";
+
+
+        WaveFile waveFile = new WaveFile();
 
         public MainWindow()
         {
@@ -86,14 +92,13 @@ namespace Kinectv2wpf
                             {
                                 subFrame.CopyFrameDataToArray(audioBuffer);
 
-                                wavefile.Write(audioBuffer);
+                                waveFile.Write(audioBuffer);
 
-                                /*
-                                 * 参考:実際のデータは32bit IEEE floatデータ
-                                 * float data1 = BitConverter.ToSingle(audioBuffer, 0);
-                                 * float data2 = BitConverter.ToSingle(audioBuffer, 4);
-                                 * float data3 = BitConverter.ToSingle(audioBuffer, 8);
-                                 */
+                                
+                                // 参考:実際のデータは32bit IEEE floatデータ
+                                float data1 = BitConverter.ToSingle(audioBuffer, 0);
+                                float data2 = BitConverter.ToSingle(audioBuffer, 4);
+                                float data3 = BitConverter.ToSingle(audioBuffer, 8);
                             }
                         }
 
@@ -102,145 +107,18 @@ namespace Kinectv2wpf
             }    
         }
 
-        // カラー画像更新処理
-        private void UpdateColorFrame(MultiSourceFrame multiFrame)
-        {
-            // カラーフレームを取得する
-            using (var colorFrame = multiFrame.ColorFrameReference.AcquireFrame())
-            {
-                if (colorFrame == null)
-                {
-                    return;
-                }
-
-                // BGRAデータを取得
-                colorFrame.CopyConvertedFrameDataToArray(colorBuffer, ColorImageFormat.Bgra);
-            }
-        }
-
-        // BodyIndex更新処理
-        private void UpdateBodyIndexFrame(MultiSourceFrame multiFrame)
-        {
-            using (var bodyIndexFrame = multiFrame.BodyIndexFrameReference.AcquireFrame())
-            {
-                if (bodyIndexFrame == null)
-                {
-                    return;
-                }
-
-                // ボディインデックスデータを取得する
-                bodyIndexFrame.CopyFrameDataToArray(bodyIndexBuffer);
-            }
-        }
-
-        // Depth更新処理
-        private void UpdateDepthFrame(MultiSourceFrame multiFrame)
-        {
-            using (var depthFrame = multiFrame.DepthFrameReference.AcquireFrame())
-            {
-                if (depthFrame == null)
-                {
-                    return;
-                }
-
-                // Depthデータを取得
-                depthFrame.CopyFrameDataToArray(depthBuffer);
-            }
-        }
-
-
-        private void DrawColorCoodinate()
-        {
-            // カラー画像の解像度でデータを作る
-            var colorImageBuffer = new byte[colorFrameDesc.LengthInPixels * colorFrameDesc.BytesPerPixel];
-
-            // カラー座標系に対応するDepth座標系の一覧を取得する
-            var depthSpace = new DepthSpacePoint[colorFrameDesc.LengthInPixels];
-            mapper.MapColorFrameToDepthSpace(depthBuffer, depthSpace);
-
-            // 並列で処理する
-            Parallel.For(0, colorFrameDesc.LengthInPixels, i =>
-            {
-                int depthX = (int)depthSpace[i].X;
-                int depthY = (int)depthSpace[i].Y;
-                if ((depthX < 0) || (depthFrameDesc.Width <= depthX) || 
-                    (depthY < 0) || (depthFrameDesc.Height <= depthY) )
-                {
-                    return;
-                }
-
-                // Depth座標系のインデックス
-                int depthIndex = (depthY * depthFrameDesc.Width) + depthX;
-                int bodyIndex = bodyIndexBuffer[depthIndex];
-
-                // 人を検出した位置だけ色を付ける
-                if (bodyIndex == 255)
-                {
-                    return;
-                }
-
-                // カラー画像を設定する
-                int colorImageIndex = (int)(i * colorFrameDesc.BytesPerPixel);
-                colorImageBuffer[colorImageIndex + 0] = colorBuffer[colorImageIndex + 0];
-                colorImageBuffer[colorImageIndex + 1] = colorBuffer[colorImageIndex + 1];
-                colorImageBuffer[colorImageIndex + 2] = colorBuffer[colorImageIndex + 2];
-            });
-
-            ImageColor.Source = BitmapSource.Create(
-                colorFrameDesc.Width, colorFrameDesc.Height, 96, 96,
-                PixelFormats.Bgr32, null, colorImageBuffer,
-                (int)(colorFrameDesc.Width * colorFrameDesc.BytesPerPixel));
-        }
-
-        private void DrawDepthCoodinate()
-        {
-            // Depth画像の解像度でデータを作る
-            var colorImageBuffer = new byte[depthFrameDesc.LengthInPixels * colorFrameDesc.BytesPerPixel];
-
-            // Depth座標系に対応するカラー座標系の一覧を取得する
-            var colorSpace = new ColorSpacePoint[depthFrameDesc.LengthInPixels];
-            mapper.MapDepthFrameToColorSpace(depthBuffer, colorSpace);
-
-            // 並列で処理する
-            Parallel.For(0, depthFrameDesc.LengthInPixels, i =>
-            {
-                int colorX = (int)colorSpace[i].X;
-                int colorY = (int)colorSpace[i].Y;
-                if ((colorX < 0) || (colorFrameDesc.Width <= colorX) || (colorY < 0) || (colorFrameDesc.Height <= colorY))
-                {
-                    return;
-                }
-
-                // カラー座標系のインデックス
-                int colorIndex = (colorY * colorFrameDesc.Width) + colorX;
-                int bodyIndex = bodyIndexBuffer[i];
-
-                // 人を検出した位置だけ色を塗る
-                if (bodyIndex == 255)
-                {
-                    return;
-                }
-
-                // カラー画像を設定する
-                int colorImageIndex = (int)(i * colorFrameDesc.BytesPerPixel);
-                int colorBufferIndex = (int)(colorIndex * colorFrameDesc.BytesPerPixel);
-                colorImageBuffer[colorImageIndex + 0] = colorBuffer[colorBufferIndex + 0];
-                colorImageBuffer[colorImageIndex + 1] = colorBuffer[colorBufferIndex + 1];
-                colorImageBuffer[colorImageIndex + 2] = colorBuffer[colorBufferIndex + 2];
-            });
-
-            ImageColor.Source = BitmapSource.Create(
-                depthFrameDesc.Width, depthFrameDesc.Height, 96, 96,
-                PixelFormats.Bgr32, null, colorImageBuffer,
-                (int)(depthFrameDesc.Width * colorFrameDesc.BytesPerPixel) );
-        }
-
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (multReader != null)
+            if (waveFile != null)
             {
-                multReader.Dispose();
-                multReader = null;
+                waveFile.Dispose();
+                waveFile = null;
+            }
+
+            if (audioBeamFrameReader != null)
+            {
+                audioBeamFrameReader.Dispose();
+                audioBeamFrameReader = null;
             }
 
             if (kinect != null)
@@ -248,6 +126,29 @@ namespace Kinectv2wpf
                 kinect.Close();
                 kinect = null;
             }
+        }
+
+        private void Button_Click_Start(object sender, RoutedEventArgs e)
+        {
+            MediaWave.Source = null;
+            waveFile.Open(fileName);
+            audioBeamFrameReader.IsPaused = false;
+        }
+
+        private void Button_Click_Stop(object sender, RoutedEventArgs e)
+        {
+            audioBeamFrameReader.IsPaused = true;
+            waveFile.Close();
+        }
+
+        private void Button_Click_Play(object sender, RoutedEventArgs e)
+        {
+            waveFile.Close();
+            audioBeamFrameReader.IsPaused = true;
+
+            MediaWave.Source = new Uri(string.Format("./{0}", fileName), UriKind.Relative);
+            MediaWave.Position = new TimeSpan();
+            MediaWave.Play();
         }
     }
 }
