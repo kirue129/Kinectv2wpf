@@ -23,23 +23,11 @@ namespace Kinectv2wpf
     {
         // Kinect SDK
         KinectSensor kinect;
-        MultiSourceFrameReader multReader;
+        AudioBeamFrameReader audioBeamFrameReader;
 
-        CoordinateMapper mapper;
-
-
-        // Color
-        FrameDescription colorFrameDesc;
-        ColorImageFormat colorFormat = ColorImageFormat.Bgra;
-        byte[] colorBuffer;
-
-        // Depth
-        FrameDescription depthFrameDesc;
-        ushort[] depthBuffer;
-
-        // BodyIndex
-        byte[] bodyIndexBuffer;
-
+        // 音声データ
+        byte[] audioBuffer;
+        WaveFile wavefile = new WaveFile();
 
         public MainWindow()
         {
@@ -58,27 +46,13 @@ namespace Kinectv2wpf
                 }
                 kinect.Open();
 
-                mapper = kinect.CoordinateMapper;
+                // 音声バッファを作成する
+                audioBuffer = new byte[kinect.AudioSource.SubFrameLengthInBytes];
 
-                // カラー画像の情報を作成する（BGRAフォーマット）
-                colorFrameDesc = kinect.ColorFrameSource.CreateFrameDescription(colorFormat);
-                colorBuffer = new byte[colorFrameDesc.LengthInPixels * colorFrameDesc.BytesPerPixel];
+                // 音声リーダーを開く
+                audioBeamFrameReader = kinect.AudioSource.OpenReader();
+                audioBeamFrameReader.FrameArrived += audioBeamFrameReader_FrameArrived;
 
-                // Depthデータの情報を取得する
-                depthFrameDesc = kinect.DepthFrameSource.FrameDescription;
-                depthBuffer = new ushort[depthFrameDesc.LengthInPixels];
-
-                // BodyIndexデータの情報を取得する
-                var bodyIndexFrameDecs = kinect.BodyIndexFrameSource.FrameDescription;
-                bodyIndexBuffer = new byte[bodyIndexFrameDecs.LengthInPixels];
-
-                // フレームリーダーを開く
-                multReader = kinect.OpenMultiSourceFrameReader(
-                    FrameSourceTypes.Color |
-                    FrameSourceTypes.Depth |
-                    FrameSourceTypes.BodyIndex );
-
-                multReader.MultiSourceFrameArrived += multReader_MultiSourceFrameArrived;
 
             }
 
