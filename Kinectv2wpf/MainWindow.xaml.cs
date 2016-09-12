@@ -1,6 +1,7 @@
 ﻿using Microsoft.Kinect;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -63,28 +64,42 @@ namespace Kinectv2wpf
             }
         }
 
-        void multReader_MultiSourceFrameArrived( object sender, MultiSourceFrameArrivedEventArgs e)
+        // データの取得
+        void audioBeamFrameReader_FrameArrived(object sender, AudioBeamFrameArrivedEventArgs e)
         {
-            var multiFrame = e.FrameReference.AcquireFrame();
-            if (multiFrame == null)
+            using (var audioFrame = e.FrameReference.AcquireBeamFrames() as AudioBeamFrameList)
             {
-                return;
-            }
 
-            // 各種データを取得する
-            UpdateColorFrame(multiFrame);
-            UpdateBodyIndexFrame(multiFrame);
-            UpdateDepthFrame(multiFrame);
+                if (audioFrame == null)
+                {
+                    return;
+                }
 
-            // それぞれの座標系で描画する
-            if (IsColorCoodinate.IsChecked == true)
-            {
-                DrawColorCoodinate();
-            }
-            else
-            {
-                DrawDepthCoodinate();
-            }
+                for (int i = 0; i < audioFrame.Count; i++)
+                {
+                    using (var frame = audioFrame[i])
+                    {
+                        Trace.WriteLine(frame.SubFrames.Count);
+                        for (int j = 0; j < frame.SubFrames.Count; j++)
+                        {
+                            using (var subFrame = frame.SubFrames[j])
+                            {
+                                subFrame.CopyFrameDataToArray(audioBuffer);
+
+                                wavefile.Write(audioBuffer);
+
+                                /*
+                                 * 参考:実際のデータは32bit IEEE floatデータ
+                                 * float data1 = BitConverter.ToSingle(audioBuffer, 0);
+                                 * float data2 = BitConverter.ToSingle(audioBuffer, 4);
+                                 * float data3 = BitConverter.ToSingle(audioBuffer, 8);
+                                 */
+                            }
+                        }
+
+                    }
+                }
+            }    
         }
 
         // カラー画像更新処理
