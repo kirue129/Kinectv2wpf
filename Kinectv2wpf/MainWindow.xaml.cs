@@ -47,7 +47,7 @@ namespace Kinectv2wpf
         AudioBeamFrameReader audioBeamFrameReader;
 
         // ビーム方向のTrackingIdとそのインデックス
-        ulong AudioTrackingId ulong.MaxValue;
+        ulong AudioTrackingId = ulong.MaxValue;
         int AudioTrackingIndex = -1;
 
         public MainWindow()
