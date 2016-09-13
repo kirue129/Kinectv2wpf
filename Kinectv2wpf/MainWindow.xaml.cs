@@ -67,6 +67,26 @@ namespace Kinectv2wpf
                 }
                 kinect.Open();
 
+                // 表示のためのデータを作成
+                bodyIndexFrameDesc = kinect.DepthFrameSource.FrameDescription;
+
+                // ボディインデックスデータ用のバッファ
+                bodyIndexBuffer = new byte[bodyIndexFrameDesc.LengthInPixels];
+
+                // 表示のためのビットマップに必要なものを用意
+                bodyIndexColorImage = new WriteableBitmap(bodyIndexFrameDesc.Width, bodyIndexFrameDesc.Height,
+                    96, 96, PixelFormats.Bgra32, null );
+                bodyIndexColorRect = new Int32Rect(0, 0, bodyIndexFrameDesc.Width, bodyIndexFrameDesc.Height);
+                bodyIndexColorStride = (int)(bodyIndexFrameDesc.Width * bodyIndexColorBytesPerPixel);
+
+                // ボディインデックスデータをRGBA(カラー)データにするためのバッファ
+                bodyIndexColorBuffer = new byte[bodyIndexFrameDesc.LengthInPixels * bodyIndexColorBytesPerPixel];
+
+                ImageBodyIndex.Source = bodyIndexColorImage;
+
+
+
+
                 // 音声リーダーを開く
                 audioBeamFrameReader = kinect.AudioSource.OpenReader();
                 audioBeamFrameReader.FrameArrived += audioBeamFrameReader_FrameArrived;
