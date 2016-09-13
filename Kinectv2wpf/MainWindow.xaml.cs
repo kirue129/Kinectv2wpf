@@ -26,7 +26,29 @@ namespace Kinectv2wpf
     {
         // Kinect SDK
         KinectSensor kinect;
+
+        // Bodyindex
+        BodyIndexFrameReader bodyIndexFrameReader;
+        FrameDescription bodyIndexFrameDesc;
+        byte[] bodyIndexBuffer;
+
+        // 表示用
+        WriteableBitmap bodyIndexColorImage;
+        Int32Rect bodyIndexColorRect;
+        int bodyIndexColorStride;
+        int bodyIndexColorBytesPerPixel = 4;
+        byte[] bodyIndexColorBuffer;
+
+        // Body
+        BodyFrameReader bodyFrameReader;
+        Body[] bodies;
+
+        // Audio
         AudioBeamFrameReader audioBeamFrameReader;
+
+        // ビーム方向のTrackingIdとそのインデックス
+        ulong AudioTrackingId ulong.MaxValue;
+        int AudioTrackingIndex = -1;
 
         public MainWindow()
         {
