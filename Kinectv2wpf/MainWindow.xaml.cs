@@ -55,6 +55,7 @@ namespace Kinectv2wpf
             InitializeComponent();
         }
 
+        // 初期化処理
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             try
@@ -79,18 +80,26 @@ namespace Kinectv2wpf
                 bodyIndexColorRect = new Int32Rect(0, 0, bodyIndexFrameDesc.Width, bodyIndexFrameDesc.Height);
                 bodyIndexColorStride = (int)(bodyIndexFrameDesc.Width * bodyIndexColorBytesPerPixel);
 
-                // ボディインデックスデータをRGBA(カラー)データにするためのバッファ
+                // ボディインデックスデータをBGRA(カラー)データにするためのバッファ
                 bodyIndexColorBuffer = new byte[bodyIndexFrameDesc.LengthInPixels * bodyIndexColorBytesPerPixel];
 
                 ImageBodyIndex.Source = bodyIndexColorImage;
 
+                // ボディインデックスリーダーを開く
+                bodyIndexFrameReader = kinect.BodyIndexFrameSource.OpenReader();
+                bodyIndexFrameReader.FrameArrived += bodyIndexFrameReader_FrameArrived;
 
+                // Bodyを入れる配列を作る
+                bodies = new Body[kinect.BodyFrameSource.BodyCount];
 
+                // ボディリーダーを開く
+                bodyFrameReader = kinect.BodyFrameSource.OpenReader();
+                bodyFrameReader.FrameArrived += bodyFrameReader_FrameArrived;
 
+               
                 // 音声リーダーを開く
                 audioBeamFrameReader = kinect.AudioSource.OpenReader();
                 audioBeamFrameReader.FrameArrived += audioBeamFrameReader_FrameArrived;
-
 
             }
 
@@ -101,7 +110,7 @@ namespace Kinectv2wpf
             }
         }
 
-        // データの取得
+        // ビーム方向からTrackingIdを取得
         void audioBeamFrameReader_FrameArrived(object sender, AudioBeamFrameArrivedEventArgs e)
         {
             using (var audioFrame = e.FrameReference.AcquireBeamFrames() as AudioBeamFrameList)
@@ -127,6 +136,16 @@ namespace Kinectv2wpf
                                 // 音の方向の信頼性[0~1]
                                 TextBeamAngleConfidence.Text = subFrame.BeamAngleConfidence.ToString();
 
+                                // ビーム方向に人がいれば、そのTrackingIdを保持する
+                                if (subFrame.AudioBodyCorrelations.Count != 0)
+                                {
+                                    AudioTrackingId = subFrame.AudioBodyCorrelations[0].BodyTrackingId;
+                                }
+                                else
+                                {
+                                    AudioTrackingId = ulong.MaxValue;
+                                }
+
                             }
                         }
                     }
@@ -134,6 +153,85 @@ namespace Kinectv2wpf
             }    
         }
 
+        // ビーム方向のTrackingIdからBodyIndexを取得する
+        void bodyFrameReader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
+        {
+            // ボディデータを取得する
+            using (var bodyFrame = e.FrameReference.AcquireFrame())
+            {
+                if (bodyFrame == null)
+                {
+                    return;
+                }
+
+                bodyFrame.GetAndRefreshBodyData(bodies);
+            }
+
+            // ビーム方向と一致するTrackingIdがあれば、そのインデックス(BodyIndex)を保持する
+            AudioTrackingIndex = -1;
+            for (int i = 0; i < bodies.Length; i++)
+            {
+                if(bodies[i].TrackingId == AudioTrackingId)
+                {
+                    AudioTrackingIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // BodyIndexのプレイヤーに着色する
+        void bodyIndexFrameReader_FrameArrived(object sender, BodyIndexFrameArrivedEventArgs e)
+        {
+            // ボディインデックスデータを取得する
+            using (var bodyIndexFrame = e.FrameReference.AcquireFrame())
+            {
+                if (bodyIndexFrame == null)
+                {
+                    return;
+                }
+
+                bodyIndexFrame.CopyFrameDataToArray(bodyIndexBuffer);
+
+            }
+
+            // ボディインデックスデータをBGRAデータに変換する
+            for (int i = 0; i < bodyIndexBuffer.Length; i++)
+            {
+                var index = bodyIndexBuffer[i];
+                var colorIndex = i * 4;
+
+                if (index != 255)
+                {
+                    // BodyIndexとビーム方向のTrackingIdのインデックスが一致している人の色を変える(青)
+                    if (index == AudioTrackingIndex)
+                    {
+                        bodyIndexColorBuffer[colorIndex + 0] = 255;
+                        bodyIndexColorBuffer[colorIndex + 1] = 0;
+                        bodyIndexColorBuffer[colorIndex + 2] = 0;
+                        bodyIndexColorBuffer[colorIndex + 3] = 255;
+                    }
+                    else
+                    {
+                        bodyIndexColorBuffer[colorIndex + 0] = 0;
+                        bodyIndexColorBuffer[colorIndex + 1] = 0;
+                        bodyIndexColorBuffer[colorIndex + 2] = 255;
+                        bodyIndexColorBuffer[colorIndex + 3] = 255;
+                    }
+                }
+                else
+                {
+                    bodyIndexColorBuffer[colorIndex + 0] = 255;
+                    bodyIndexColorBuffer[colorIndex + 1] = 255;
+                    bodyIndexColorBuffer[colorIndex + 2] = 255;
+                    bodyIndexColorBuffer[colorIndex + 3] = 255;
+                }
+            }
+
+            // ビットマップにする
+            bodyIndexColorImage.WritePixels(bodyIndexColorRect, bodyIndexColorBuffer, bodyIndexColorStride, 0);
+        }
+
+        // 終了処理
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
 
