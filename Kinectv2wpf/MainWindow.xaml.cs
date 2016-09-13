@@ -28,14 +28,6 @@ namespace Kinectv2wpf
         KinectSensor kinect;
         AudioBeamFrameReader audioBeamFrameReader;
 
-        // 音声データ
-        byte[] audioBuffer;
-
-        string fileName = "KinectAudio.wav";
-
-
-        WaveFile waveFile = new WaveFile();
-
         public MainWindow()
         {
             InitializeComponent();
@@ -52,9 +44,6 @@ namespace Kinectv2wpf
                     throw new Exception("Kinectを開けません");
                 }
                 kinect.Open();
-
-                // 音声バッファを作成する
-                audioBuffer = new byte[kinect.AudioSource.SubFrameLengthInBytes];
 
                 // 音声リーダーを開く
                 audioBeamFrameReader = kinect.AudioSource.OpenReader();
@@ -85,23 +74,19 @@ namespace Kinectv2wpf
                 {
                     using (var frame = audioFrame[i])
                     {
-                        Trace.WriteLine(frame.SubFrames.Count);
                         for (int j = 0; j < frame.SubFrames.Count; j++)
                         {
                             using (var subFrame = frame.SubFrames[j])
                             {
-                                subFrame.CopyFrameDataToArray(audioBuffer);
 
-                                waveFile.Write(audioBuffer);
+                                // 音の方向
+                                LineBeamAngle.Angle = (int)(subFrame.BeamAngle * 180 / Math.PI);
 
-                                
-                                // 参考:実際のデータは32bit IEEE floatデータ
-                                float data1 = BitConverter.ToSingle(audioBuffer, 0);
-                                float data2 = BitConverter.ToSingle(audioBuffer, 4);
-                                float data3 = BitConverter.ToSingle(audioBuffer, 8);
+                                // 音の方向の信頼性[0~1]
+                                TextBeamAngleConfidence.Text = subFrame.BeamAngleConfidence.ToString();
+
                             }
                         }
-
                     }
                 }
             }    
