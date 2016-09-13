@@ -94,11 +94,6 @@ namespace Kinectv2wpf
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (waveFile != null)
-            {
-                waveFile.Dispose();
-                waveFile = null;
-            }
 
             if (audioBeamFrameReader != null)
             {
@@ -111,29 +106,6 @@ namespace Kinectv2wpf
                 kinect.Close();
                 kinect = null;
             }
-        }
-
-        private void Button_Click_Start(object sender, RoutedEventArgs e)
-        {
-            MediaWave.Source = null;
-            waveFile.Open(fileName);
-            audioBeamFrameReader.IsPaused = false;
-        }
-
-        private void Button_Click_Stop(object sender, RoutedEventArgs e)
-        {
-            audioBeamFrameReader.IsPaused = true;
-            waveFile.Close();
-        }
-
-        private void Button_Click_Play(object sender, RoutedEventArgs e)
-        {
-            waveFile.Close();
-            audioBeamFrameReader.IsPaused = true;
-
-            MediaWave.Source = new Uri(string.Format("./{0}", fileName), UriKind.Relative);
-            MediaWave.Position = new TimeSpan();
-            MediaWave.Play();
         }
     }
 }
