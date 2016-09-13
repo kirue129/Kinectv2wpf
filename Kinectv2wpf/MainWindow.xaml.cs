@@ -235,6 +235,18 @@ namespace Kinectv2wpf
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
 
+            if (bodyIndexFrameReader != null)
+            {
+                bodyIndexFrameReader.Dispose();
+                bodyIndexFrameReader = null;
+            }
+
+            if (bodyFrameReader != null)
+            {
+                bodyFrameReader.Dispose();
+                bodyFrameReader = null;
+            }
+
             if (audioBeamFrameReader != null)
             {
                 audioBeamFrameReader.Dispose();
