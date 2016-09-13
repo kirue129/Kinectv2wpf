@@ -11,22 +11,25 @@
         Height="540" 
         Width="960">
     <Grid>
+        <Image x:Name="ImageBodyIndex" Width="512" Height="424" />
+
         <StackPanel Width="960" Height="540" Orientation="Vertical">
-            <Border Height="300" Width="20" Background="Black"
-                    CornerRadius="10" VerticalAlignment="Top"
-                    RenderTransformOrigin="0.5,0">
+            <Border Width="20" Height="300" Background="Black" CornerRadius="10"
+                    VerticalAlignment="Top" RenderTransformOrigin="0.5, 0">
                 <Border.RenderTransform>
                     <TransformGroup>
-                        <RotateTransform Angle="0" x:Name="LineBeamAngle" />
-                        <ScaleTransform ScaleX="1" />
+                        <RotateTransform Angle="0" x:Name="LineBeamAngle"/>
+                        <ScaleTransform ScaleX="-1"/>
                     </TransformGroup>
                 </Border.RenderTransform>
             </Border>
 
             <TextBlock Text="{Binding ElementName=LineBeamAngle, Path=Angle}"
-                       FontSize="20" HorizontalAlignment="Center" />
+                       FontSize="20" HorizontalAlignment="Center"/>
             <TextBlock x:Name="TextBeamAngleConfidence" Text="0"
-                       FontSize="20" HorizontalAlignment="Center" />
+                       FontSize="20" HorizontalAlignment="Center"/>
+            <TextBlock x:Name="TextAudioBodyCorrelations" Text="0"
+                       FontSize="20" HorizontalAlignment="Center"/>
         </StackPanel>
     </Grid>
 </Window>
